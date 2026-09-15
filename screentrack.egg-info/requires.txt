@@ -1,0 +1,7 @@
+rich>=13.0
+tomli_w>=1.0
+python-xlib>=0.33
+ewmh>=0.1.6
+
+[:python_version < "3.11"]
+tomli>=2.0

@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: screentrack
+Version: 1.0.0
+Summary: Lightweight CLI screen time tracker for X11 Linux (built for Kali)
+Requires-Python: >=3.10
+Requires-Dist: rich>=13.0
+Requires-Dist: tomli_w>=1.0
+Requires-Dist: tomli>=2.0; python_version < "3.11"
+Requires-Dist: python-xlib>=0.33
+Requires-Dist: ewmh>=0.1.6

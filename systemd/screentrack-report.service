@@ -1,0 +1,6 @@
+[Unit]
+Description=ScreenTrack — check/send monthly email report
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/screentrack-report

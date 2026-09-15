@@ -1,0 +1,31 @@
+[Unit]
+Description=ScreenTrack — screen time tracking daemon
+# graphical-session.target is a *soft* ordering hint only — many desktop
+# environments (Kali's default XFCE included) never actually activate it,
+# so a hard dependency on it means the service silently never starts on
+# boot. WantedBy=default.target below is what actually guarantees this
+# runs whenever your user systemd instance starts.
+After=graphical-session.target
+
+[Service]
+Type=simple
+# %h expands to the invoking user's home directory. pipx always exposes
+# entry-point shims here regardless of pipx version/config, so this is
+# more robust than reaching into pipx's internal venv directory.
+ExecStart=%h/.local/bin/screentrack-daemon
+Restart=on-failure
+# X11 (and therefore xdotool/xprintidle) may not be ready the instant this
+# starts at boot/login — RestartSec + Restart=on-failure means it just
+# keeps retrying every 5s until the display is up.
+RestartSec=5
+# Pull in the X11 DISPLAY and XAUTHORITY the desktop session set, so the
+# daemon can talk to xdotool/xprintidle even when started headlessly.
+# Without XAUTHORITY specifically, xdotool/xprintidle fail to authenticate
+# to the X server and every call silently errors out — which looks like
+# "everything gets logged as Other" since window detection always returns
+# nothing. install.sh patches both of these to your real values.
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+
+[Install]
+WantedBy=default.target

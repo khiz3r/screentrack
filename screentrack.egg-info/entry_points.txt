@@ -1,0 +1,4 @@
+[console_scripts]
+screentrack = screentrack.cli:main
+screentrack-daemon = screentrack.tracker:main
+screentrack-report = screentrack.monthly_report:main

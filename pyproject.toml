@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "screentrack"
+version = "1.0.0"
+description = "Lightweight CLI screen time tracker for X11 Linux (built for Kali)"
+requires-python = ">=3.10"
+dependencies = [
+    "rich>=13.0",
+    "tomli_w>=1.0",
+    "tomli>=2.0; python_version < '3.11'",
+    "python-xlib>=0.33",
+    "ewmh>=0.1.6",
+]
+
+[project.scripts]
+screentrack = "screentrack.cli:main"
+screentrack-daemon = "screentrack.tracker:main"
+screentrack-report = "screentrack.monthly_report:main"
+
+[tool.setuptools]
+packages = ["screentrack"]
