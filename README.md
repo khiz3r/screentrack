@@ -4,7 +4,7 @@ A lightweight, privacy-friendly CLI screen time tracker for X11-based Linux
 desktops (built and tested with Kali Linux in mind).
 
 Everything is stored locally in SQLite (`~/.local/share/screentrack/screentrack.db`).
-Nothing is ever sent anywhere unless you explicitly enable monthly email reports.
+Nothing is ever sent anywhere unless you explicitly enable email reports.
 
 ## Install
 
@@ -18,7 +18,7 @@ The installer:
 2. Installs the `screentrack` Python package via `pipx`.
 3. Installs and enables two `systemd --user` units, plus one root-level hook:
    - `screentrack.service` — the always-on tracking daemon
-   - `screentrack-report.timer` — checks daily whether to email the monthly report
+   - `screentrack-report.timer` — fires every morning at 08:00 to send the daily email summary; also sends the full monthly report on the 1st of each month
    - `/usr/lib/systemd/system-sleep/screentrack` — a root-level suspend/resume
      hook (installed with sudo) that signals the daemon around sleep. This
      can't be a `systemd --user` unit because `sleep.target` only exists in
@@ -81,7 +81,7 @@ screentrack --config                 # view all settings
 |---|---|
 | `--export csv` / `--export json` | Export all raw usage records |
 | `--backup` | Copy the SQLite DB to `~/.local/share/screentrack/backups/` |
-| `--reset` | Wipe all data (asks for confirmation) |
+| `--reset` | Wipe all data (asks for confirmation) and automatically restarts the tracker |
 
 ## Configuration file
 
@@ -125,15 +125,20 @@ in `smtp_password`, not your normal login password.
   (`xdotool`) and idle time (`xprintidle`) every `poll_interval_seconds`
   (default 5s).
 - Time is attributed to whichever whitelisted app matches the focused
-  window's class name (case-insensitive substring match); everything else
-  is bucketed as "Other".
+  window's class name (case-insensitive substring match). Apps not in your
+  whitelist are ignored completely — nothing is recorded for them.
 - If idle time exceeds `idle_threshold_minutes`, no time is logged until
   activity resumes.
 - Each boot/login/suspend cycle is logged as a separate **session**, closed
   with a reason (`logout`, `sleep`, `shutdown`, or `crash-recovered` if the
   daemon didn't shut down cleanly last time).
+- The active segment is flushed to the database every ~60 seconds even
+  without an app switch, so a crash can lose at most one minute of data.
 - When your daily total crosses `daily_goal_hours`, you get one
   desktop notification per day via `notify-send`.
+- When email is enabled, a daily summary (previous day's totals) is sent
+  every morning at 08:00. On the 1st of the month a full monthly report is
+  also sent with total screen time, daily average, and top apps.
 
 ## Uninstall
 
