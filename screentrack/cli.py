@@ -293,6 +293,20 @@ def cmd_reset():
     with db.get_conn() as conn:
         db.reset_all(conn)
     status_line("All data cleared.", style="green")
+    # Re-initialise the schema so the DB is ready for fresh writes, then
+    # bounce the daemon so it opens a new session against the empty database.
+    # Without this the running daemon still holds a reference to the old
+    # (now empty) session and tracks nothing until it is restarted manually.
+    db.init_db()
+    restart_rc = os.system("systemctl --user restart screentrack.service 2>/dev/null")
+    if restart_rc == 0:
+        status_line("Tracker restarted — recording fresh data now.", style="green")
+    else:
+        status_line(
+            "Data cleared, but could not restart the tracker automatically.\n"
+            "  Run:  systemctl --user restart screentrack.service",
+            style="yellow",
+        )
 
 
 # --------------------------------------------------------------------------

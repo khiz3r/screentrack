@@ -4,7 +4,7 @@ Description=Run ScreenTrack's monthly report check daily
 [Timer]
 # Runs once a day; screentrack-report.service itself checks the
 # configured send_day and no-ops on every day except that one.
-OnCalendar=*-*-* 09:00:00
+OnCalendar=*-*-* 08:00:00
 Persistent=true
 
 [Install]

@@ -30,16 +30,16 @@ logging.basicConfig(
 log = logging.getLogger("screentrack")
 
 
-def _match_whitelist(window_class: Optional[str], whitelist: list[str]) -> str:
+def _match_whitelist(window_class: Optional[str], whitelist: list[str]) -> Optional[str]:
     """Map a raw window class to a whitelist entry (case-insensitive
-    substring match), or 'Other' if nothing matches."""
+    substring match), or None if nothing matches."""
     if not window_class:
-        return "Other"
+        return None
     lc = window_class.lower()
     for entry in whitelist:
         if entry.lower() in lc or lc in entry.lower():
             return entry
-    return "Other"
+    return None
 
 
 def _read_status() -> dict:
@@ -57,6 +57,12 @@ def _write_status(status: dict) -> None:
 
 
 class Tracker:
+    # How often (in ticks) to flush the current segment to the DB even when
+    # the active app hasn't changed. At the default 5-second poll interval,
+    # FLUSH_EVERY=12 means we commit every ~60 seconds, so a crash can lose
+    # at most one minute of data instead of an entire uninterrupted session.
+    FLUSH_EVERY = 12
+
     def __init__(self):
         self.cfg = load_config()
         db.init_db()
@@ -67,6 +73,7 @@ class Tracker:
         self._idle = False
         self._idle_since: Optional[datetime] = None
         self._sleeping = False
+        self._ticks_since_flush: int = 0
 
         signal.signal(signal.SIGTERM, self._handle_signal)
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -125,18 +132,33 @@ class Tracker:
 
     # ------------------------------------------------------------- ticking --
 
-    def _flush_segment(self):
-        """Persist the in-progress app-usage segment, if any."""
+    def _flush_segment(self, reopen: bool = False):
+        """Persist the in-progress app-usage segment, if any.
+
+        When `reopen` is True the current app continues — we write the
+        completed chunk to the DB and immediately restart a fresh segment
+        for the same app.  This is used by the periodic mid-session flush
+        so that a crash can only lose at most FLUSH_EVERY ticks of data.
+        When `reopen` is False (default) we clear the current app so the
+        next tick picks up whatever window is focused then.
+        """
         if self._current_app is None or self._segment_start is None:
+            self._ticks_since_flush = 0
             return
         end = datetime.now()
+        app = self._current_app
         with db.get_conn() as conn:
             db.record_app_usage(
-                conn, self._session_id, self._current_app,
+                conn, self._session_id, app,
                 self._segment_start.date(), self._segment_start, end,
             )
-        self._current_app = None
-        self._segment_start = None
+        self._ticks_since_flush = 0
+        if reopen:
+            # Continue tracking the same app — just start a new segment.
+            self._segment_start = end
+        else:
+            self._current_app = None
+            self._segment_start = None
 
     def _check_goal(self, cfg: dict):
         if not cfg["general"].get("notify_on_goal", True):
@@ -193,10 +215,22 @@ class Tracker:
         window_class = get_active_window_class()
         app = _match_whitelist(window_class, cfg["apps"]["whitelist"])
 
+        if app is None:
+            # Focused window is not in the whitelist — flush any ongoing
+            # segment and wait until a tracked app comes into focus.
+            self._flush_segment()
+            return
+
         if app != self._current_app:
             self._flush_segment()
             self._current_app = app
             self._segment_start = datetime.now()
+        else:
+            # Same app still focused — bump the counter and flush periodically
+            # so a crash can only lose at most FLUSH_EVERY ticks of data.
+            self._ticks_since_flush += 1
+            if self._ticks_since_flush >= self.FLUSH_EVERY:
+                self._flush_segment(reopen=True)
 
         self._check_goal(cfg)
 

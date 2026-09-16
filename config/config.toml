@@ -23,7 +23,11 @@ smtp_password = ""
 use_tls = true
 from_addr = ""
 to_addr = ""
+# Send a daily summary email every morning at 08:00 (previous day's totals).
+# The timer fires at 08:00 via systemd; this flag just enables/disables it.
 send_monthly_report = true
+# Day of the month (1–28) to also send the full previous-month summary.
+# On this day BOTH the daily report and the monthly report are emailed.
 send_day = 1
 
 [advanced]

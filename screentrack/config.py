@@ -38,8 +38,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "use_tls": True,
         "from_addr": "",
         "to_addr": "",
+        # A daily summary (previous day's totals) is sent every morning at
+        # 08:00 when enabled=True and SMTP creds are filled in.
         "send_monthly_report": True,
-        "send_day": 1,  # day of month to send the previous month's report
+        # On this day of the month the full previous-month report is also sent.
+        "send_day": 1,
     },
     "advanced": {
         "poll_interval_seconds": 5,
